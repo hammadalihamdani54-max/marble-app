@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Marble Pro Business System</title>
+
+<!-- PDF Library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+body {
+  font-family: Arial;
+  background: #f4f4f4;
+  padding: 15px;
+}
+
+h2 { text-align: center; }
+
+.card {
+  background: white;
+  padding: 15px;
+  border-radius: 10px;
+  box-shadow: 0 0 10px #ccc;
+  margin-bottom: 15px;
+}
+
+input, button {
+  padding: 8px;
+  margin: 5px;
+}
+
+input {
+  width: 180px;
+}
+
+button {
+  cursor: pointer;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+
+th, td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: center;
+}
+
+th {
+  background: #333;
+  color: white;
+}
+</style>
+</head>
+
+<body>
+
+<h2>🏗 Marble Business Pro System</h2>
+
+<div class="card">
+
+<input id="item" placeholder="Item Name">
+<input id="length" type="number" placeholder="Length">
+<input id="width" type="number" placeholder="Width">
+<input id="price" type="number" placeholder="Unit Price">
+<input id="cost" type="number" placeholder="Cost Price">
+
+<button onclick="addEntry()">➕ Add</button>
+<button onclick="downloadPDF()">📄 PDF Bill</button>
+
+<br><br>
+
+<input type="month" id="filterMonth" onchange="render()">
+
+</div>
+
+<div class="card">
+<h3 id="summary"></h3>
+</div>
+
+<table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Item</th>
+<th>m²</th>
+<th>Total</th>
+<th>Cost</th>
+<th>Profit</th>
+<th>Action</th>
+</tr>
+</thead>
+
+<tbody id="table"></tbody>
+</table>
+
+<script>
+
+let data = JSON.parse(localStorage.getItem("marblePro")) || [];
+
+function save() {
+  localStorage.setItem("marblePro", JSON.stringify(data));
+}
+
+function addEntry() {
+  let item = document.getElementById("item").value;
+  let l = +document.getElementById("length").value;
+  let w = +document.getElementById("width").value;
+  let price = +document.getElementById("price").value;
+  let cost = +document.getElementById("cost").value;
+
+  if(!item || !l || !w || !price) return alert("Fill all fields");
+
+  let area = l * w;
+  let total = area * price;
+  let totalCost = area * cost;
+  let profit = total - totalCost;
+
+  let entry = {
+    date: new Date().toISOString().slice(0,10),
+    item, area, total, totalCost, profit
+  };
+
+  data.push(entry);
+  save();
+  render();
+}
+
+function deleteItem(i) {
+  data.splice(i,1);
+  save();
+  render();
+}
+
+function render() {
+
+  let table = document.getElementById("table");
+  table.innerHTML = "";
+
+  let month = document.getElementById("filterMonth").value;
+
+  let sales = 0;
+  let cost = 0;
+
+  data.forEach((d,i)=>{
+
+    if(month && !d.date.startsWith(month)) return;
+
+    let row = table.insertRow();
+
+    row.innerHTML = `
+      <td>${d.date}</td>
+      <td>${d.item}</td>
+      <td>${d.area.toFixed(2)}</td>
+      <td>${d.total.toFixed(2)}</td>
+      <td>${d.totalCost.toFixed(2)}</td>
+      <td>${d.profit.toFixed(2)}</td>
+      <td><button onclick="deleteItem(${i})">❌</button></td>
+    `;
+
+    sales += d.total;
+    cost += d.totalCost;
+  });
+
+  document.getElementById("summary").innerText =
+    `Total Sales: ${sales.toFixed(2)} | Cost: ${cost.toFixed(2)} | Profit: ${(sales-cost).toFixed(2)}`;
+}
+
+render();
+
+async function downloadPDF() {
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  doc.text("Marble Business Invoice", 10, 10);
+
+  let y = 20;
+
+  data.forEach((d,i)=>{
+    doc.text(
+      `${i+1}. ${d.item} | m²:${d.area.toFixed(2)} | Total:${d.total.toFixed(2)} | Profit:${d.profit.toFixed(2)}`,
+      10, y
+    );
+    y += 10;
+  });
+
+  doc.save("marble-bill.pdf");
+}
+
+</script>
+
+</body>
+</html>
